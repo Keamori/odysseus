@@ -57,6 +57,15 @@ function setPlayerTokens(id, val) { api.setPlayerDbValue(id, "tokens", val); }
 function getPlayerRank(id) { return Number(api.getPlayerDbValue(id, "rankIdx")) || 0; }
 function setPlayerRank(id, val) { api.setPlayerDbValue(id, "rankIdx", val); }
 
+function getPlayerExp(id) { return Number(api.getPlayerDbValue(id, "exp")) || 0; }
+function setPlayerExp(id, val) { api.setPlayerDbValue(id, "exp", val); }
+function getPlayerKills(id) { return Number(api.getPlayerDbValue(id, "kills")) || 0; }
+function setPlayerKills(id, val) { api.setPlayerDbValue(id, "kills", val); }
+function getPlayerDeaths(id) { return Number(api.getPlayerDbValue(id, "deaths")) || 0; }
+function setPlayerDeaths(id, val) { api.setPlayerDbValue(id, "deaths", val); }
+function getPlayerLBux(id) { return Number(api.getPlayerDbValue(id, "lbux")) || 0; }
+function setPlayerLBux(id, val) { api.setPlayerDbValue(id, "lbux", val); }
+
 function getOwnedChunks(playerDbId) {
     const raw = api.getLobbyDbValue("owned_chunks_" + playerDbId);
     return raw ? raw.split(";") : [];
@@ -144,8 +153,8 @@ function updateShop(playerId) {
         const nextRank = RANKS[rankIdx + 1];
         api.createShopItemForPlayer(playerId, "Ranks", "buy_rank", {
             image: "Gold Block",
-            customTitle: "Upgrade to " + nextRank.name,
-            cost: nextRank.cost,
+            title: "Upgrade to " + nextRank.name,
+            price: nextRank.cost,
             description: "Become a " + nextRank.name + " (" + nextRank.focus + " focus)",
             canBuy: tokens >= nextRank.cost
         });
@@ -155,41 +164,41 @@ function updateShop(playerId) {
     if (!chunk) {
         api.createShopItemForPlayer(playerId, "Real Estate", "claim", {
             image: "Grass Block",
-            customTitle: "Claim This Chunk",
-            cost: CLAIM_COST,
+            title: "Claim This Chunk",
+            price: CLAIM_COST,
             description: "Protect your builds here.",
             canBuy: tokens >= CLAIM_COST
         });
     } else if (chunk.ownerDbId === dbId) {
         api.createShopItemForPlayer(playerId, "Real Estate", "tp_home", {
             image: "Bed",
-            customTitle: "Teleport Home",
-            cost: 0,
+            title: "Teleport Home",
+            price: 0,
             description: "Teleport to your home point in this chunk."
         });
         api.createShopItemForPlayer(playerId, "Real Estate", "set_tp", {
             image: "Compass",
-            customTitle: "Set Home TP",
-            cost: 0,
+            title: "Set Home TP",
+            price: 0,
             description: "Set where people arrive in this chunk."
         });
         api.createShopItemForPlayer(playerId, "Real Estate", "toggle_tp", {
             image: "Iron Door",
-            customTitle: chunk.tpOpen ? "Close TP (Private)" : "Open TP (Public)",
-            cost: 0,
+            title: chunk.tpOpen ? "Close TP (Private)" : "Open TP (Public)",
+            price: 0,
             description: "Control if others can TP here."
         });
         api.createShopItemForPlayer(playerId, "Real Estate", "add_trust", {
             image: "Player Head",
-            customTitle: "Trust Player",
-            cost: 0,
+            title: "Trust Player",
+            price: 0,
             description: "Enter name to allow building.",
             userInput: { type: "text", placeholderText: "Player Name" }
         });
         api.createShopItemForPlayer(playerId, "Real Estate", "sell", {
             image: "Chest",
-            customTitle: "List for Sale",
-            cost: 0,
+            title: "List for Sale",
+            price: 0,
             description: "Put this chunk on the marketplace.",
             userInput: { type: "number", placeholderText: "Price" }
         });
@@ -201,8 +210,8 @@ function updateShop(playerId) {
         const itemKey = "market_" + item.chunkId;
         api.createShopItemForPlayer(playerId, "Marketplace", itemKey, {
             image: "Grass Block",
-            customTitle: (item.customTitle || item.name || "Plot") + " (" + item.price + " token:)",
-            cost: item.price,
+            title: (item.customTitle || item.name || "Plot") + " (" + item.price + " token:)",
+            price: item.price,
             description: "Purchase property from " + item.ownerName,
             canBuy: tokens >= item.price && item.ownerDbId !== dbId
         });
@@ -211,8 +220,8 @@ function updateShop(playerId) {
         if (item.tpOpen) {
              api.createShopItemForPlayer(playerId, "Visit Islands", "tp_" + item.chunkId, {
                 image: "Compass",
-                customTitle: "Island: " + item.ownerName,
-                cost: 0,
+                title: "Island: " + item.ownerName,
+                price: 0,
                 description: "Teleport to this island."
             });
         }
@@ -223,8 +232,8 @@ function updateShop(playerId) {
     owned.forEach((cId) => {
         api.createShopItemForPlayer(playerId, "My Islands", "my_tp_" + cId, {
             image: "Grass Block",
-            customTitle: "Island @ " + cId,
-            cost: 0,
+            title: "Island @ " + cId,
+            price: 0,
             description: "Teleport to this owned chunk."
         });
     });
@@ -243,8 +252,8 @@ function updateShop(playerId) {
 
             api.createShopItemForPlayer(playerId, category, "config_" + itemKey, {
                 image: firstGive.item,
-                customTitle: "Buy " + firstGive.item,
-                cost: 0,
+                title: "Buy " + firstGive.item,
+                price: 0,
                 description: entry.description,
                 canBuy: hasReqs
             });
@@ -256,8 +265,8 @@ function updateShop(playerId) {
     if (currentRank.kit) {
         api.createShopItemForPlayer(playerId, "Kits", "claim_kit", {
             image: "Iron Sword",
-            customTitle: "Claim " + currentRank.name + " Kit",
-            cost: 0,
+            title: "Claim " + currentRank.name + " Kit",
+            price: 0,
             description: "Get your rank daily items."
         });
     }
@@ -284,7 +293,23 @@ onPlayerJoin = function(playerId, fromGameReset) {
     api.setClientOption(playerId, "showChatBubbles", true);
 };
 
-onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInput) {
+onPlayerKilledOtherPlayer = function(attackerId, killedId) {
+    setPlayerKills(attackerId, getPlayerKills(attackerId) + 1);
+    setPlayerDeaths(killedId, getPlayerDeaths(killedId) + 1);
+    setPlayerExp(attackerId, getPlayerExp(attackerId) + 50);
+
+    // 20% chance to earn 1 LBux on kill
+    if (Math.random() < 0.2) {
+        setPlayerLBux(attackerId, getPlayerLBux(attackerId) + 1);
+        api.sendMessage(attackerId, "&6+1 LBux rewarded!");
+    }
+
+    api.sendMessage(attackerId, "&a+50 EXP for kill!");
+    updateLobbyHUD(attackerId);
+    updateLobbyHUD(killedId);
+};
+
+onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
     const dbId = api.getPlayerDbId(playerId);
     const pos = api.getPosition(playerId);
     const chunkId = getChunkId(pos);
@@ -480,49 +505,68 @@ function updateLobbyHUD(playerId) {
     const chunk = getChunkData(chunkId);
     const rank = RANKS[getPlayerRank(playerId)];
     const tokens = getPlayerTokens(playerId);
+    const exp = getPlayerExp(playerId);
+    const lbux = getPlayerLBux(playerId);
+    const claims = getOwnedChunks(api.getPlayerDbId(playerId)).length;
+    const k = getPlayerKills(playerId);
+    const d = getPlayerDeaths(playerId);
 
     api.setClientOption(playerId, "RightInfoText", [
         {
-            str: " LOVERFELLA BLOXD \n",
-            style: { color: "#ffaa00", fontWeight: "bold", fontSize: "16px" }
-        },
-        { str: "------------------\n", style: { color: "#ffffff" } },
-        {
-            str: "👤 Players: ",
-            style: { color: "#00ffff", fontSize: "12px" }
+            str: " ❤️ Mega Survival ❤️ \n",
+            style: { color: "#ffff00", fontWeight: "bold", fontSize: "14px" }
         },
         {
-            str: `${allPlayers.length}\n`,
+            str: `  ${allPlayers.length}/23 | Zone ${Math.floor(Math.abs(pos.x)/2000) + 1}\n\n`,
             style: { color: "#ffffff", fontSize: "12px" }
         },
         {
-            str: "👑 Rank: ",
-            style: { color: "#ffff00", fontSize: "12px" }
+            str: "OWNER ",
+            style: { color: "#aa0000", fontWeight: "bold" }
         },
         {
-            str: `${rank.name}\n`,
-            style: { color: "#ffffff", fontSize: "12px" }
+            str: `${chunk ? chunk.ownerName : "LoverFella"}\n`,
+            style: { color: "#aa0000" }
         },
         {
-            str: "💰 token: ",
-            style: { color: "#00ff00", fontSize: "12px" }
+            str: ` $ Money: $${tokens.toLocaleString()}\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
         },
         {
-            str: `${tokens.toLocaleString()}\n`,
-            style: { color: "#ffffff", fontSize: "12px" }
+            str: ` ☀️ EXP: ${exp}\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
         },
         {
-            str: "📍 Region: ",
+            str: ` 🚀 LBux: ${lbux}\n`,
             style: { color: "#ff5555", fontSize: "12px" }
         },
         {
-            str: `${chunk ? chunk.ownerName : "Unclaimed"}\n`,
-            style: { color: "#ffffff", fontSize: "12px" }
+            str: ` ⛏️ Claims: ${claims} chunks\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
         },
-        { str: "------------------\n", style: { color: "#ffffff" } },
         {
-            str: " Play.LoverFella.io ",
-            style: { color: "#aaaaaa", fontSize: "10px", fontStyle: "italic" }
+            str: ` 💀 K/D: ${k}/${d}\n\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
+        },
+        {
+            str: "Your Claim\n",
+            style: { color: "#aaaaaa", fontSize: "12px" }
+        },
+        {
+            str: ` Rank: ${rank.name}\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
+        },
+        {
+            str: " Profile: Global Profile\n",
+            style: { color: "#ffffaa", fontSize: "12px" }
+        },
+        {
+            str: ` Chunk: ${Math.floor(pos.x/64)}, ${Math.floor(pos.z/64)}\n\n`,
+            style: { color: "#ffffaa", fontSize: "12px" }
+        },
+        {
+            str: " play.loverfella.com ",
+            style: { color: "#aaaaaa", fontSize: "10px" }
         }
     ]);
 }
