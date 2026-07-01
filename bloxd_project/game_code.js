@@ -13,6 +13,29 @@ const CRATE_ITEM_NAME = "Lucky Block";
 const CHUNK_SIZE = 64;
 const CLAIM_COST = 500;
 
+// Data-Driven Shop Configuration for Resource Exchanges
+const SHOP_CONFIG = {
+    "Blocks": {
+        "STONE": {
+            gives: [{ item: "Stone", amount: 1 }],
+            takes: [{ item: "Wheat", amount: 9 }],
+            description: "Purchase 1 Stone for 9 Wheat"
+        },
+        "REDCONCRETE": {
+            gives: [{ item: "Red Concrete", amount: 1 }],
+            takes: [{ item: "Bread", amount: 8 }, { item: "Corn", amount: 3}],
+            description: "Purchase red concrete for 8 Bread + 3 Corn"
+        }
+    },
+    "Crates": {
+        "LUCKY_BLOCK": {
+            gives: [{ item: "Lucky Block", amount: 1 }],
+            takes: [{ item: "Unobtainable Item", amount: 1 }],
+            description: "Swap 1 Unobtainable Item for 1 Lucky Block"
+        }
+    }
+};
+
 // Rank Progression: Providing permanent stat boosts, kits, and nametag icons.
 const RANKS = [
     { name: "Peasant", cost: 0, focus: "Start", effects: [], kit: null, icon: "user", color: "gray" },
@@ -130,7 +153,7 @@ function updateShop(playerId) {
     // Real Estate Category
     if (!chunk) {
         api.createShopItemForPlayer(playerId, "Real Estate", "claim", {
-            image: "Sign",
+            image: "Grass Block",
             customTitle: "Claim This Chunk",
             cost: CLAIM_COST,
             description: "Protect your builds here.",
@@ -198,12 +221,34 @@ function updateShop(playerId) {
     const owned = getOwnedChunks(dbId);
     owned.forEach((cId) => {
         api.createShopItemForPlayer(playerId, "My Islands", "my_tp_" + cId, {
-            image: "Bed",
+            image: "Grass Block",
             customTitle: "Island @ " + cId,
             cost: 0,
             description: "Teleport to this owned chunk."
         });
     });
+
+    // Dynamic Categories from SHOP_CONFIG
+    for (const category in SHOP_CONFIG) {
+        for (const itemKey in SHOP_CONFIG[category]) {
+            const entry = SHOP_CONFIG[category][itemKey];
+            const firstGive = entry.gives[0];
+
+            // Check if player has all required items
+            let hasReqs = true;
+            entry.takes.forEach(t => {
+                if (api.getInventoryItemAmount(playerId, t.item) < t.amount) hasReqs = false;
+            });
+
+            api.createShopItemForPlayer(playerId, category, "config_" + itemKey, {
+                image: firstGive.item,
+                customTitle: "Buy " + firstGive.item,
+                cost: 0,
+                description: entry.description,
+                canBuy: hasReqs
+            });
+        }
+    }
 
     // Kits Category
     const currentRank = RANKS[rankIdx];
@@ -215,15 +260,6 @@ function updateShop(playerId) {
             description: "Get your rank daily items."
         });
     }
-
-    // Crate Exchange
-    api.createShopItemForPlayer(playerId, "Crates", "buy_lucky", {
-        image: "Lucky Block",
-        customTitle: "Buy Lucky Block",
-        cost: 0,
-        description: "Swap 1 " + KEY_ITEM_NAME + " for a Lucky Block.",
-        canBuy: api.getInventoryItemAmount(playerId, KEY_ITEM_NAME) >= 1
-    });
 }
 
 // --- 4. Event Handlers ---
@@ -398,10 +434,30 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInpu
         }
     }
 
-    if (itemKey === "buy_lucky") {
-        api.removeItemName(playerId, KEY_ITEM_NAME, 1);
-        api.giveItem(playerId, CRATE_ITEM_NAME, 1);
-        api.sendMessage(playerId, "&eLucky Block received!");
+    // Handle Config Exchanges
+    if (itemKey.startsWith("config_")) {
+        const configId = itemKey.replace("config_", "");
+        let configEntry = null;
+        for (const cat in SHOP_CONFIG) {
+            if (SHOP_CONFIG[cat][configId]) {
+                configEntry = SHOP_CONFIG[cat][configId];
+                break;
+            }
+        }
+
+        if (configEntry) {
+            // Check Reqs again
+            let canAfford = true;
+            configEntry.takes.forEach(t => {
+                if (api.getInventoryItemAmount(playerId, t.item) < t.amount) canAfford = false;
+            });
+
+            if (canAfford) {
+                configEntry.takes.forEach(t => api.removeItemName(playerId, t.item, t.amount));
+                configEntry.gives.forEach(g => api.giveItem(playerId, g.item, g.amount));
+                api.sendMessage(playerId, "&aPurchase successful!");
+            }
+        }
     }
 
     updateShop(playerId);
