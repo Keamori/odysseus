@@ -210,12 +210,12 @@ onPlayerChangeBlock = function(playerId, x, y, z, blockName) {
     return "preventChange";
 };
 
-onPlayerJoin = function(playerId) {
+onPlayerJoin = function(playerId, fromGameReset) {
     updateShop(playerId);
     updateLobbyHUD(playerId);
 };
 
-onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
+onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInput) {
     const dbId = api.getPlayerDbId(playerId);
     const pos = api.getPosition(playerId);
     const chunkId = getChunkId(pos);
@@ -239,7 +239,7 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
 
     if (itemKey === "sell") {
         const chunk = getChunkData(chunkId);
-        const price = Number(userInput.value);
+        const price = Number(userInput);
         if (chunk && chunk.ownerDbId === dbId && !isNaN(price)) {
             chunk.forSale = true; chunk.price = price;
             setChunkData(chunkId, chunk);
@@ -256,12 +256,12 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
 
     if (itemKey === "add_trust") {
         const chunk = getChunkData(chunkId);
-        const targetId = api.getPlayerId(userInput.value);
+        const targetId = api.getPlayerId(userInput);
         if (chunk && chunk.ownerDbId === dbId && targetId) {
             const tDbId = api.getPlayerDbId(targetId);
             if (!chunk.trusted.includes(tDbId)) {
                 chunk.trusted.push(tDbId); setChunkData(chunkId, chunk);
-                api.sendMessage(playerId, "&aTrusted " + userInput.value);
+                api.sendMessage(playerId, "&aTrusted " + userInput);
             }
         }
     }
@@ -425,7 +425,15 @@ function updateLobbyHUD(playerId) {
             style: { color: "#ff5555", fontSize: "12px" }
         },
         {
-            str: `${chunk ? chunk.ownerName : "Wilderness"}\n`,
+            str: `${chunk ? chunk.ownerName : "Unclaimed"}\n`,
+            style: { color: "#ffffff", fontSize: "12px" }
+        },
+        {
+            str: "🌲 Biome: ",
+            style: { color: "#55ff55", fontSize: "12px" }
+        },
+        {
+            str: `${(api.getBiomeAt ? api.getBiomeAt(pos.x, pos.z) : "Not Supported") || "Unknown"}\n`,
             style: { color: "#ffffff", fontSize: "12px" }
         },
         { str: "------------------\n", style: { color: "#ffffff" } },
