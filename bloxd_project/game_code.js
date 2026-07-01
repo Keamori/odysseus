@@ -281,6 +281,7 @@ onPlayerJoin = function(playerId, fromGameReset) {
     updateShop(playerId);
     updateLobbyHUD(playerId);
     updatePlayerNameTag(playerId);
+    api.setClientOption(playerId, "showChatBubbles", true);
 };
 
 onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInput) {
