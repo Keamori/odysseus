@@ -8,7 +8,7 @@
 const GAME_NAME = "LoverFella Bloxd";
 const STARTING_TOKENS = 1000;
 const SESSION_REWARD_MINUTES = 60;
-const KEY_ITEM_NAME = "Unobtainable Item";
+const KEY_ITEM_NAME = "Dark Green Bricks";
 const CRATE_ITEM_NAME = "Lucky Block";
 const CHUNK_SIZE = 64;
 const CLAIM_COST = 500;
@@ -30,8 +30,8 @@ const SHOP_CONFIG = {
     "Crates": {
         "LUCKY_BLOCK": {
             gives: [{ item: "Lucky Block", amount: 1 }],
-            takes: [{ item: "Unobtainable Item", amount: 1 }],
-            description: "Swap 1 Unobtainable Item for 1 Lucky Block"
+            takes: [{ item: "Dark Green Bricks", amount: 1 }],
+            description: "Swap 1 Dark Green Bricks for 1 Lucky Block"
         }
     }
 };
@@ -104,6 +104,33 @@ function getPlayerIdByName(name) {
         if (api.getEntityName(id).toLowerCase() === name.toLowerCase()) return id;
     }
     return null;
+}
+
+function getDynamicBiome(pos) {
+    if (!pos) return "Unknown";
+    const gx = Math.floor(pos.x);
+    const gy = Math.floor(pos.y) - 1;
+    const gz = Math.floor(pos.z);
+    const block = api.getBlock(gx, gy, gz);
+
+    if (!block || block === "Air") return "Falling / Flying";
+
+    switch (block) {
+        case "Grass Block": return "Grasslands";
+        case "Sand": return "Desert";
+        case "Red Sand": return "Red Desert";
+        case "Snow": return "Snowy Plains";
+        case "Ice": return "Frozen River";
+        case "Snowy Misty Stone": return "Frozen Badlands";
+        case "Pine Grass Block": return "Pine Forest";
+        case "Jungle Grass Block": return "Jungle";
+        case "Spectral Grass": return "Spectral Forest";
+        case "Stone": return "Stony Caves";
+        case "Andesite": return "Andesite Deep";
+        case "Granite": return "Granite Deep";
+        case "Diorite": return "Diorite Deep";
+        default: return "Wilderness";
+    }
 }
 
 function updatePlayerNameTag(playerId) {
@@ -522,7 +549,7 @@ function updateLobbyHUD(playerId) {
             style: { color: "#55ff55", fontSize: "12px" }
         },
         {
-            str: `${(api.getBiomeAt ? api.getBiomeAt(pos.x, pos.z) : "Not Supported") || "Unknown"}\n`,
+            str: `${getDynamicBiome(pos)}\n`,
             style: { color: "#ffffff", fontSize: "12px" }
         },
         { str: "------------------\n", style: { color: "#ffffff" } },
