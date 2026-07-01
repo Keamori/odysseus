@@ -13,18 +13,18 @@ const CRATE_ITEM_NAME = "Lucky Block";
 const CHUNK_SIZE = 64;
 const CLAIM_COST = 500;
 
-// Rank Progression: Providing permanent stat boosts or kits.
+// Rank Progression: Providing permanent stat boosts, kits, and nametag icons.
 const RANKS = [
-    { name: "Peasant", cost: 0, focus: "Start", effects: [], kit: null },
-    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], kit: { items: ["Gold Bar"], amounts: [5] } },
-    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], kit: { items: ["Iron Pickaxe"], amounts: [1] } },
-    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], kit: { items: ["Iron Sword"], amounts: [1] } },
-    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], kit: { items: ["Iron Axe"], amounts: [1] } },
-    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], kit: { items: ["Iron Shovel"], amounts: [1] } },
-    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], kit: { items: ["Diamond Sword"], amounts: [1] } },
-    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], kit: { items: ["Gold Bar"], amounts: [50] } },
-    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], kit: { items: ["Speed Potion"], amounts: [3] } },
-    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], kit: { items: ["Diamond Axe"], amounts: [1] } }
+    { name: "Peasant", cost: 0, focus: "Start", effects: [], kit: null, icon: "user", color: "gray" },
+    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], kit: { items: ["Gold Bar"], amounts: [5] }, icon: "leaf", color: "green" },
+    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], kit: { items: ["Iron Pickaxe"], amounts: [1] }, icon: "pickaxe", color: "lightblue" },
+    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], kit: { items: ["Iron Sword"], amounts: [1] }, icon: "swords", color: "red" },
+    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], kit: { items: ["Iron Axe"], amounts: [1] }, icon: "tree", color: "brown" },
+    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], kit: { items: ["Iron Shovel"], amounts: [1] }, icon: "shovel", color: "orange" },
+    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], kit: { items: ["Diamond Sword"], amounts: [1] }, icon: "shield", color: "blue" },
+    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], kit: { items: ["Gold Bar"], amounts: [50] }, icon: "hammer", color: "gold" },
+    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], kit: { items: ["Speed Potion"], amounts: [3] }, icon: "zap", color: "yellow" },
+    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], kit: { items: ["Diamond Axe"], amounts: [1] }, icon: "crown", color: "darkorange" }
 ];
 
 // --- 2. Database Helpers ---
@@ -81,6 +81,28 @@ function getPlayerIdByName(name) {
         if (api.getEntityName(id).toLowerCase() === name.toLowerCase()) return id;
     }
     return null;
+}
+
+function updatePlayerNameTag(playerId) {
+    const rank = RANKS[getPlayerRank(playerId)];
+    api.setTargetedPlayerSettingForEveryone(
+        playerId,
+        "nameTagInfo",
+        {
+            content: [
+                {
+                    icon: rank.icon,
+                    mainRGB: rank.color,
+                    chatTag: [],
+                },
+                {
+                    str: ` [${rank.name}] ${api.getEntityName(playerId)}`,
+                    style: { color: rank.color }
+                },
+            ],
+        },
+        true
+    );
 }
 
 // --- 3. Shop GUI logic ---
@@ -221,6 +243,7 @@ onPlayerChangeBlock = function(playerId, x, y, z, blockName) {
 onPlayerJoin = function(playerId, fromGameReset) {
     updateShop(playerId);
     updateLobbyHUD(playerId);
+    updatePlayerNameTag(playerId);
 };
 
 onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInput) {
@@ -232,6 +255,7 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, item, userInpu
         const nextIdx = getPlayerRank(playerId) + 1;
         setPlayerTokens(playerId, getPlayerTokens(playerId) - RANKS[nextIdx].cost);
         setPlayerRank(playerId, nextIdx);
+        updatePlayerNameTag(playerId);
         api.broadcastMessage("&a" + api.getEntityName(playerId) + " is now a " + RANKS[nextIdx].name + "!");
     }
 
