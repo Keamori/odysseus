@@ -107,29 +107,29 @@ function getPlayerIdByName(name) {
 }
 
 function getDynamicBiome(pos) {
-    if (!pos) return "Unknown";
+    if (!pos) return { name: "Unknown", color: "#ffffff" };
     const gx = Math.floor(pos.x);
     const gy = Math.floor(pos.y) - 1;
     const gz = Math.floor(pos.z);
     const block = api.getBlock(gx, gy, gz);
 
-    if (!block || block === "Air") return "Falling / Flying";
+    if (!block || block === "Air") return { name: "Falling / Flying", color: "#aaaaaa" };
 
     switch (block) {
-        case "Grass Block": return "Grasslands";
-        case "Sand": return "Desert";
-        case "Red Sand": return "Red Desert";
-        case "Snow": return "Snowy Plains";
-        case "Ice": return "Frozen River";
-        case "Snowy Misty Stone": return "Frozen Badlands";
-        case "Pine Grass Block": return "Pine Forest";
-        case "Jungle Grass Block": return "Jungle";
-        case "Spectral Grass": return "Spectral Forest";
-        case "Stone": return "Stony Caves";
-        case "Andesite": return "Andesite Deep";
-        case "Granite": return "Granite Deep";
-        case "Diorite": return "Diorite Deep";
-        default: return "Wilderness";
+        case "Grass Block": return { name: "Grasslands / Plains", color: "#4CAF50" };
+        case "Sand": return { name: "Desert / Cactus Fields", color: "#FFEB3B" };
+        case "Red Sand": return { name: "Red Desert", color: "#FF5722" };
+        case "Snow": return { name: "Snowy Plains / Cold Forest", color: "#E0F7FA" };
+        case "Ice": return { name: "Frozen River / Glacier", color: "#00E5FF" };
+        case "Snowy Misty Stone": return { name: "Frozen Badlands Zone", color: "#B0BEC5" };
+        case "Pine Grass Block": return { name: "Pine & Cedar Forest", color: "#1B5E20" };
+        case "Jungle Grass Block": return { name: "Dense Jungle", color: "#76FF03" };
+        case "Spectral Grass": return { name: "Spectral Forest", color: "#AA00FF" };
+        case "Stone": return { name: "Standard Stony Caves", color: "#9E9E9E" };
+        case "Andesite": return { name: "Andesite Cave Deep Zone", color: "#757575" };
+        case "Granite": return { name: "Granite Cave Deep Zone", color: "#FF8A65" };
+        case "Diorite": return { name: "Diorite Cave Deep Zone", color: "#EEEEEE" };
+        default: return { name: "Wilderness", color: "#ffffff" };
     }
 }
 
@@ -505,6 +505,7 @@ function updateLobbyHUD(playerId) {
     const chunk = getChunkData(chunkId);
     const rank = RANKS[getPlayerRank(playerId)];
     const tokens = getPlayerTokens(playerId);
+    const biome = getDynamicBiome(pos);
 
     api.setClientOption(playerId, "RightInfoText", [
         {
@@ -549,8 +550,8 @@ function updateLobbyHUD(playerId) {
             style: { color: "#55ff55", fontSize: "12px" }
         },
         {
-            str: `${getDynamicBiome(pos)}\n`,
-            style: { color: "#ffffff", fontSize: "12px" }
+            str: `${biome.name}\n`,
+            style: { color: biome.color, fontSize: "12px" }
         },
         { str: "------------------\n", style: { color: "#ffffff" } },
         {
