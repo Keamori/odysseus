@@ -34,23 +34,23 @@ function setPlayerMoney(id, val) { api.setPlayerDbValue(id, "money", val); }
 function getPlayerRank(id) { return Number(api.getPlayerDbValue(id, "rankIdx")) || 0; }
 function setPlayerRank(id, val) { api.setPlayerDbValue(id, "rankIdx", val); }
 
-function getOwnedChunks(id) {
-    const raw = api.getPlayerDbValue(id, "ownedChunks");
-    return raw ? raw.split(",") : [];
+function getOwnedChunks(playerDbId) {
+    const raw = api.getLobbyDbValue("owned_chunks_" + playerDbId);
+    return raw ? raw.split(";") : [];
 }
-function addOwnedChunk(id, chunkId) {
-    const chunks = getOwnedChunks(id);
+function addOwnedChunk(playerDbId, chunkId) {
+    const chunks = getOwnedChunks(playerDbId);
     if (!chunks.includes(chunkId)) {
         chunks.push(chunkId);
-        api.setPlayerDbValue(id, "ownedChunks", chunks.join(","));
+        api.setLobbyDbValue("owned_chunks_" + playerDbId, chunks.join(";"));
     }
 }
-function removeOwnedChunk(id, chunkId) {
-    const chunks = getOwnedChunks(id);
+function removeOwnedChunk(playerDbId, chunkId) {
+    const chunks = getOwnedChunks(playerDbId);
     const idx = chunks.indexOf(chunkId);
     if (idx >= 0) {
         chunks.splice(idx, 1);
-        api.setPlayerDbValue(id, "ownedChunks", chunks.join(","));
+        api.setLobbyDbValue("owned_chunks_" + playerDbId, chunks.join(";"));
     }
 }
 
@@ -156,7 +156,7 @@ function updateShop(playerId) {
     });
 
     // My Islands
-    const owned = getOwnedChunks(playerId);
+    const owned = getOwnedChunks(dbId);
     owned.forEach((cId) => {
         api.createShopItemForPlayer(playerId, "My Islands", "my_tp_" + cId, {
             name: "Island @ " + cId,
@@ -200,6 +200,7 @@ onPlayerChangeBlock = function(playerId, x, y, z, blockName) {
 
 onPlayerJoin = function(playerId) {
     updateShop(playerId);
+    updateLobbyHUD(playerId);
 };
 
 onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
@@ -220,7 +221,7 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
             ownerDbId: dbId, ownerName: api.getEntityName(playerId),
             trusted: [], tpPoint: pos, tpOpen: false, forSale: false, price: 0
         });
-        addOwnedChunk(playerId, chunkId);
+        addOwnedChunk(dbId, chunkId);
         api.sendMessage(playerId, "&aChunk claimed!");
     }
 
@@ -262,11 +263,11 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const money = getPlayerMoney(playerId);
 
         if (targetChunk && targetChunk.ownerDbId !== dbId && money >= listing.price) {
-             const oldOwner = targetChunk.ownerDbId;
+             const oldOwnerDbId = targetChunk.ownerDbId;
+
              // Update database ownership tracking
-             // Note: we'd need player ID from dbId for better tracking in a real lobby,
-             // for now we manage the current player's list.
-             addOwnedChunk(playerId, targetChunkId);
+             removeOwnedChunk(oldOwnerDbId, targetChunkId);
+             addOwnedChunk(dbId, targetChunkId);
 
              setPlayerMoney(playerId, money - listing.price);
              targetChunk.ownerDbId = dbId; targetChunk.ownerName = api.getEntityName(playerId);
@@ -342,17 +343,74 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
     }
 
     if (itemKey === "buy_lucky") {
-        api.removeItemName(playerId, KEY_ITEM_NAME, 1);
+        api.removeItem(playerId, KEY_ITEM_NAME, 1);
         api.giveItem(playerId, CRATE_ITEM_NAME, 1);
         api.sendMessage(playerId, "&eLucky Block received!");
     }
 
     updateShop(playerId);
+    updateLobbyHUD(playerId);
 };
 
 // --- 5. Main Loop ---
 
 const PLAYER_TIMERS = {};
+const HUD_UPDATE_INTERVAL = 1000; // Update HUD every second
+const LAST_HUD_UPDATES = {};
+
+function updateLobbyHUD(playerId) {
+    const allPlayers = api.getPlayerIds();
+    const pos = api.getPosition(playerId);
+    const chunkId = getChunkId(pos);
+    const chunk = getChunkData(chunkId);
+    const rank = RANKS[getPlayerRank(playerId)];
+    const money = getPlayerMoney(playerId);
+
+    api.setClientOption(playerId, "RightInfoText", [
+        {
+            str: " LOVERFELLA BLOXD \n",
+            style: { color: "#ffaa00", fontWeight: "bold", fontSize: "16px" }
+        },
+        { str: "------------------\n", style: { color: "#ffffff" } },
+        {
+            str: "👤 Players: ",
+            style: { color: "#00ffff", fontSize: "12px" }
+        },
+        {
+            str: `${allPlayers.length}\n`,
+            style: { color: "#ffffff", fontSize: "12px" }
+        },
+        {
+            str: "👑 Rank: ",
+            style: { color: "#ffff00", fontSize: "12px" }
+        },
+        {
+            str: `${rank.name}\n`,
+            style: { color: "#ffffff", fontSize: "12px" }
+        },
+        {
+            str: "💰 Money: ",
+            style: { color: "#00ff00", fontSize: "12px" }
+        },
+        {
+            str: `$${money.toLocaleString()}\n`,
+            style: { color: "#ffffff", fontSize: "12px" }
+        },
+        {
+            str: "📍 Region: ",
+            style: { color: "#ff5555", fontSize: "12px" }
+        },
+        {
+            str: `${chunk ? chunk.ownerName : "Wilderness"}\n`,
+            style: { color: "#ffffff", fontSize: "12px" }
+        },
+        { str: "------------------\n", style: { color: "#ffffff" } },
+        {
+            str: " Play.LoverFella.io ",
+            style: { color: "#aaaaaa", fontSize: "10px", fontStyle: "italic" }
+        }
+    ]);
+}
 
 tick = function() {
     const allPlayers = api.getPlayerIds();
@@ -367,20 +425,13 @@ tick = function() {
             PLAYER_TIMERS[p] = now;
         }
 
-        // Sidebar HUD (Top Right is the standard for custom code)
-        if (Math.floor(now / 500) % 2 === 0) {
-            const chunk = getChunkId(api.getPosition(p));
-            const cData = getChunkData(chunk);
-            const statusText = `Owner: ${cData ? cData.ownerName : "Wilderness"} | Rank: ${RANKS[getPlayerRank(p)].name}`;
-            // Corrected signature: (playerId, icon, text, options)
-            api.sendTopRightHelper(p, "fas fa-crown", statusText, {
-                duration: 1
-            });
+        // Persistent Sidebar HUD & Buffs
+        if (!LAST_HUD_UPDATES[p] || now - LAST_HUD_UPDATES[p] >= HUD_UPDATE_INTERVAL) {
+            updateLobbyHUD(p);
+            const rank = RANKS[getPlayerRank(p)];
+            rank.effects.forEach(eff => api.applyEffect(p, eff, 2000, { level: 1 }));
+            LAST_HUD_UPDATES[p] = now;
         }
-
-        // Rank Buffs
-        const rank = RANKS[getPlayerRank(p)];
-        rank.effects.forEach(eff => api.applyEffect(p, eff, 2000, { level: 1 }));
 
         // Instant Sell Guidance (LoverFella SMP style)
         // Note: Actual selling is handled by Bloxd's built-in SMP system settings,
