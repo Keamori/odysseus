@@ -1,7 +1,7 @@
 // ==================================================================================
 // LOVERFELLA REPLICATE FOR BLOXD.IO
 // ==================================================================================
-// This script implements a custom economy, rank progression, property marketplace,
+// This script implements a custom economy, rank progression, plot management,
 // and session-based rewards entirely through the Bloxd.io Shop GUI (B key).
 
 // --- 1. Configuration & Constants ---
@@ -9,45 +9,45 @@ const GAME_NAME = "LoverFella Bloxd";
 const STARTING_TOKENS = 1000;
 const SESSION_REWARD_MINUTES = 60;
 const KEY_ITEM_NAME = "Dark Green Bricks";
-const CRATE_ITEM_NAME = "Lucky Block";
+const CURRENCY_ITEM = "Gold Coin";
 const CHUNK_SIZE = 64;
-const CLAIM_COST = 500;
 
-// Data-Driven Shop Configuration for Resource Exchanges
-const SHOP_CONFIG = {
-    "Blocks": {
-        "STONE": {
-            gives: [{ item: "Stone", amount: 1 }],
-            takes: [{ item: "Wheat", amount: 9 }],
-            description: "Purchase 1 Stone for 9 Wheat"
-        },
-        "REDCONCRETE": {
-            gives: [{ item: "Red Concrete", amount: 1 }],
-            takes: [{ item: "Bread", amount: 8 }, { item: "Corn", amount: 3}],
-            description: "Purchase red concrete for 8 Bread + 3 Corn"
-        }
-    },
-    "Crates": {
-        "LUCKY_BLOCK": {
-            gives: [{ item: "Lucky Block", amount: 1 }],
-            takes: [{ item: "Dark Green Bricks", amount: 1 }],
-            description: "Swap 1 Dark Green Bricks for 1 Lucky Block"
-        }
-    }
-};
+// Detailed Shop Config
+const BUY_ITEMS = [
+    { item: "Stone", cost: 5, icon: "Stone" },
+    { item: "Dirt", cost: 2, icon: "Dirt" },
+    { item: "Grass Block", cost: 5, icon: "Grass Block" },
+    { item: "Oak Log", cost: 10, icon: "Oak Log" },
+    { item: "Iron Ingot", cost: 50, icon: "Iron Ingot" },
+    { item: "Gold Ingot", cost: 150, icon: "Gold Ingot" },
+    { item: "Diamond", cost: 500, icon: "Diamond" }
+];
 
-// Rank Progression: Providing permanent stat boosts, kits, and nametag icons.
+const SELL_ITEMS = [
+    { item: "Wheat", reward: 2, icon: "Wheat" },
+    { item: "Bread", reward: 5, icon: "Bread" },
+    { item: "Iron Ingot", reward: 25, icon: "Iron Ingot" },
+    { item: "Diamond", reward: 250, icon: "Diamond" }
+];
+
+const LUCKY_BLOCK_TYPES = [
+    { item: "Lucky Block", icon: "Lucky Block" },
+    { item: "Super Lucky Block", icon: "Lucky Block" },
+    { item: "Omega Lucky Block", icon: "Lucky Block" }
+];
+
+// Rank Progression
 const RANKS = [
-    { name: "Peasant", cost: 0, focus: "Start", effects: [], kit: null, icon: "user", color: "gray" },
-    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], kit: { items: ["Gold Bar"], amounts: [5] }, icon: "leaf", color: "green" },
-    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], kit: { items: ["Iron Pickaxe"], amounts: [1] }, icon: "pickaxe", color: "lightblue" },
-    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], kit: { items: ["Iron Sword"], amounts: [1] }, icon: "swords", color: "red" },
-    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], kit: { items: ["Iron Axe"], amounts: [1] }, icon: "tree", color: "brown" },
-    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], kit: { items: ["Iron Shovel"], amounts: [1] }, icon: "shovel", color: "orange" },
-    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], kit: { items: ["Diamond Sword"], amounts: [1] }, icon: "shield", color: "blue" },
-    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], kit: { items: ["Gold Bar"], amounts: [50] }, icon: "hammer", color: "gold" },
-    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], kit: { items: ["Speed Potion"], amounts: [3] }, icon: "zap", color: "yellow" },
-    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], kit: { items: ["Diamond Axe"], amounts: [1] }, icon: "crown", color: "darkorange" }
+    { name: "Peasant", cost: 0, focus: "Start", effects: [], icon: "user", color: "gray" },
+    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], icon: "leaf", color: "green" },
+    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], icon: "pickaxe", color: "lightblue" },
+    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], icon: "swords", color: "red" },
+    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], icon: "tree", color: "brown" },
+    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], icon: "shovel", color: "orange" },
+    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], icon: "shield", color: "blue" },
+    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], icon: "hammer", color: "gold" },
+    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], icon: "zap", color: "yellow" },
+    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], icon: "crown", color: "darkorange" }
 ];
 
 // --- 2. Database Helpers ---
@@ -103,7 +103,7 @@ function setMarketplace(list) {
 }
 
 function getChunkId(pos) {
-    // Bloxd api.getPosition returns {x, y, z}
+    if (!pos) return "0,0,0";
     return `${Math.floor(pos.x / CHUNK_SIZE)},${Math.floor(pos.y / CHUNK_SIZE)},${Math.floor(pos.z / CHUNK_SIZE)}`;
 }
 
@@ -115,16 +115,16 @@ function getPlayerIdByName(name) {
     return null;
 }
 
-
 function updatePlayerNameTag(playerId) {
-    const rank = RANKS[getPlayerRank(playerId)];
+    const activeRankIdx = Number(api.getPlayerDbValue(playerId, "activeRankIdx")) || 0;
+    const rank = RANKS[activeRankIdx];
     api.setTargetedPlayerSettingForEveryone(
         playerId,
         "nameTagInfo",
         {
             content: [
                 {
-                    icon: rank.icon,
+                    icon: rank.icon === "user" ? "wrench" : (rank.icon === "crown" ? "crown" : rank.icon),
                     mainRGB: rank.color,
                     chatTag: [],
                 },
@@ -142,134 +142,137 @@ function updatePlayerNameTag(playerId) {
 
 function updateShop(playerId) {
     const tokens = getPlayerTokens(playerId);
-    const rankIdx = getPlayerRank(playerId);
+    const currentRankIdx = getPlayerRank(playerId);
+    const activeRankIdx = Number(api.getPlayerDbValue(playerId, "activeRankIdx")) || 0;
     const pos = api.getPosition(playerId);
+    if (!pos) return;
+
     const chunkId = getChunkId(pos);
     const chunk = getChunkData(chunkId);
     const dbId = api.getPlayerDbId(playerId);
 
-    // Ranks Category
-    if (rankIdx < RANKS.length - 1) {
-        const nextRank = RANKS[rankIdx + 1];
-        api.createShopItemForPlayer(playerId, "Ranks", "buy_rank", {
-            image: "Gold Block",
-            title: "Upgrade to " + nextRank.name,
-            price: nextRank.cost,
-            description: "Become a " + nextRank.name + " (" + nextRank.focus + " focus)",
-            canBuy: tokens >= nextRank.cost
-        });
-    }
+    // Ranks Category [Select, Selected, Buy]
+    RANKS.forEach((rank, idx) => {
+        let status = "Buy";
+        let canBuy = tokens >= rank.cost;
+        if (idx <= currentRankIdx) {
+            status = (idx === activeRankIdx) ? "Selected" : "Select";
+            canBuy = true;
+        }
 
-    // Real Estate Category
-    if (!chunk) {
-        api.createShopItemForPlayer(playerId, "Real Estate", "claim", {
-            image: "Grass Block",
-            title: "Claim This Chunk",
-            price: CLAIM_COST,
-            description: "Protect your builds here.",
-            canBuy: tokens >= CLAIM_COST
+        api.createShopItemForPlayer(playerId, "Ranks", "rank_" + idx, {
+            image: rank.icon === "user" ? "Player Head" : (rank.icon === "crown" ? "Gold Block" : "Sign"),
+            customTitle: `${rank.name} [${status}]`,
+            cost: (status === "Buy") ? rank.cost : 0,
+            description: `Tier ${idx + 1} | ${rank.focus} focus. Status: ${status}`,
+            canBuy: canBuy
         });
-    } else if (chunk.ownerDbId === dbId) {
-        api.createShopItemForPlayer(playerId, "Real Estate", "tp_home", {
-            image: "Bed",
-            title: "Teleport Home",
-            price: 0,
-            description: "Teleport to your home point in this chunk."
+    });
+
+    // My Plot (Management)
+    if (chunk && chunk.ownerDbId === dbId) {
+        api.createShopItemForPlayer(playerId, "My Plot", "rename_plot", {
+            image: "Sign", customTitle: "Rename Plot", cost: 0,
+            description: `Current Name: ${chunk.name || chunk.ownerName + "'s Island"}`,
+            userInput: { type: "text", placeholderText: "New Plot Name" }
         });
-        api.createShopItemForPlayer(playerId, "Real Estate", "set_tp", {
-            image: "Compass",
-            title: "Set Home TP",
-            price: 0,
-            description: "Set where people arrive in this chunk."
+        api.createShopItemForPlayer(playerId, "My Plot", "tp_home", {
+            image: "Bed", customTitle: "Teleport Home", cost: 0, description: "Go to your plot spawn."
         });
-        api.createShopItemForPlayer(playerId, "Real Estate", "toggle_tp", {
-            image: "Iron Door",
-            title: chunk.tpOpen ? "Close TP (Private)" : "Open TP (Public)",
-            price: 0,
-            description: "Control if others can TP here."
+        api.createShopItemForPlayer(playerId, "My Plot", "set_tp", {
+            image: "Compass", customTitle: "Set Plot Spawn", cost: 0, description: "Set where people arrive."
         });
-        api.createShopItemForPlayer(playerId, "Real Estate", "add_trust", {
-            image: "Player Head",
-            title: "Trust Player",
-            price: 0,
-            description: "Enter name to allow building.",
+        api.createShopItemForPlayer(playerId, "My Plot", "toggle_tp", {
+            image: "Iron Door", customTitle: chunk.tpOpen ? "Close Plot (Private)" : "Open Plot (Public)",
+            cost: 0, description: "Toggle visitor access."
+        });
+        api.createShopItemForPlayer(playerId, "My Plot", "add_trust", {
+            image: "Player Head", customTitle: "Trust Builder", cost: 0,
+            description: "Allow a player to build here.",
             userInput: { type: "text", placeholderText: "Player Name" }
         });
-        api.createShopItemForPlayer(playerId, "Real Estate", "sell", {
-            image: "Chest",
-            title: "List for Sale",
-            price: 0,
-            description: "Put this chunk on the marketplace.",
-            userInput: { type: "number", placeholderText: "Price" }
+        api.createShopItemForPlayer(playerId, "My Plot", "sell", {
+            image: "Chest", customTitle: "List for Sale", cost: 0,
+            description: "Put this plot on the marketplace.",
+            userInput: { type: "number", placeholderText: "Price in Tokens" }
+        });
+    } else if (!chunk) {
+        // Claim using Gold Coin item
+        api.createShopItemForPlayer(playerId, "My Plot", "claim", {
+            image: "Grass Block",
+            customTitle: "Claim This Plot",
+            cost: 0,
+            description: `Costs 1 ${CURRENCY_ITEM}. Protects 64x64 area.`,
+            canBuy: api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1
         });
     }
 
-    // Marketplace
+    // Real Estate (Marketplace)
     const market = getMarketplace();
     market.forEach((item) => {
-        const itemKey = "market_" + item.chunkId;
-        api.createShopItemForPlayer(playerId, "Marketplace", itemKey, {
+        api.createShopItemForPlayer(playerId, "Real Estate", "market_" + item.chunkId, {
             image: "Grass Block",
-            title: (item.customTitle || item.name || "Plot") + " (" + item.price + " token:)",
-            price: item.price,
-            description: "Purchase property from " + item.ownerName,
+            customTitle: `${item.customTitle || item.name || "Plot"} (${item.price} token:)`,
+            cost: item.price,
+            description: `Seller: ${item.ownerName}. Purchase to own this land.`,
             canBuy: tokens >= item.price && item.ownerDbId !== dbId
         });
+    });
 
-        // If owner opened it, allow visiting
+    // Visit Plots (Teleportation)
+    market.forEach((item) => {
         if (item.tpOpen) {
-             api.createShopItemForPlayer(playerId, "Visit Islands", "tp_" + item.chunkId, {
-                image: "Compass",
-                title: "Island: " + item.ownerName,
-                price: 0,
-                description: "Teleport to this island."
-            });
+             api.createShopItemForPlayer(playerId, "Visit Plots", "tp_" + item.chunkId, {
+                image: "Compass", customTitle: `Visit: ${item.ownerName}`, cost: 0,
+                description: "Teleport to this public plot."
+             });
         }
     });
 
-    // My Islands
-    const owned = getOwnedChunks(dbId);
-    owned.forEach((cId) => {
-        api.createShopItemForPlayer(playerId, "My Islands", "my_tp_" + cId, {
-            image: "Grass Block",
-            title: "Island @ " + cId,
-            price: 0,
-            description: "Teleport to this owned chunk."
+    // Bank (Coin <-> Token)
+    api.createShopItemForPlayer(playerId, "Bank", "withdraw_coin", {
+        image: "Gold Ingot", customTitle: `Withdraw ${CURRENCY_ITEM}`, cost: 500,
+        description: `Exchange 500 tokens for 1 ${CURRENCY_ITEM}.`,
+        canBuy: tokens >= 500
+    });
+    api.createShopItemForPlayer(playerId, "Bank", "deposit_coin", {
+        image: "Gold Ingot", customTitle: `Deposit ${CURRENCY_ITEM}`, cost: 0,
+        description: `Exchange 1 ${CURRENCY_ITEM} for 450 tokens.`,
+        canBuy: api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1
+    });
+
+    // Buy (Factions Style)
+    BUY_ITEMS.forEach(obj => {
+        api.createShopItemForPlayer(playerId, "Buy", "buy_item_" + obj.item, {
+            image: obj.icon, customTitle: obj.item, cost: obj.cost, description: `Buy 1 ${obj.item}`,
+            canBuy: tokens >= obj.cost
         });
     });
 
-    // Dynamic Categories from SHOP_CONFIG
-    for (const category in SHOP_CONFIG) {
-        for (const itemKey in SHOP_CONFIG[category]) {
-            const entry = SHOP_CONFIG[category][itemKey];
-            const firstGive = entry.gives[0];
-
-            // Check if player has all required items
-            let hasReqs = true;
-            entry.takes.forEach(t => {
-                if (api.getInventoryItemAmount(playerId, t.item) < t.amount) hasReqs = false;
-            });
-
-            api.createShopItemForPlayer(playerId, category, "config_" + itemKey, {
-                image: firstGive.item,
-                title: "Buy " + firstGive.item,
-                price: 0,
-                description: entry.description,
-                canBuy: hasReqs
-            });
-        }
-    }
-
-    // Kits Category
-    const currentRank = RANKS[rankIdx];
-    if (currentRank.kit) {
-        api.createShopItemForPlayer(playerId, "Kits", "claim_kit", {
-            image: "Iron Sword",
-            title: "Claim " + currentRank.name + " Kit",
-            price: 0,
-            description: "Get your rank daily items."
+    // Sell (Factions Style)
+    SELL_ITEMS.forEach(obj => {
+        api.createShopItemForPlayer(playerId, "Sell", "sell_item_" + obj.item, {
+            image: obj.icon, customTitle: `Sell ${obj.item}`, cost: -obj.reward,
+            description: `Earn ${obj.reward} tokens per 1 ${obj.item}`,
+            canBuy: api.getInventoryItemAmount(playerId, obj.item) >= 1,
+            sell: true
         });
-    }
+    });
+
+    // Lucky Blocks
+    LUCKY_BLOCK_TYPES.forEach(lb => {
+        api.createShopItemForPlayer(playerId, "Lucky Blocks", "lucky_" + lb.item, {
+            image: lb.icon, customTitle: `Buy ${lb.item}`, cost: 0,
+            description: `Costs 1 ${KEY_ITEM_NAME}`,
+            canBuy: api.getInventoryItemAmount(playerId, KEY_ITEM_NAME) >= 1
+        });
+    });
+
+    // Kits
+    api.createShopItemForPlayer(playerId, "Kits", "kit_peasant", {
+        image: "Wooden Sword", customTitle: "Peasant Kit", cost: 0,
+        description: "Standard tools: Sword, Glider, Pickaxe, Axe, Shovel."
+    });
 }
 
 // --- 4. Event Handlers ---
@@ -282,7 +285,7 @@ onPlayerChangeBlock = function(playerId, x, y, z, blockName) {
     const dbId = api.getPlayerDbId(playerId);
     if (chunk.ownerDbId === dbId || (chunk.trusted && chunk.trusted.includes(dbId))) return;
 
-    api.sendMessage(playerId, "&cOwned by " + chunk.ownerName);
+    api.sendMessage(playerId, `&cOwned by ${chunk.name || chunk.ownerName}`);
     return "preventChange";
 };
 
@@ -293,43 +296,121 @@ onPlayerJoin = function(playerId, fromGameReset) {
     api.setClientOption(playerId, "showChatBubbles", true);
 };
 
-onPlayerKilledOtherPlayer = function(attackerId, killedId) {
-    setPlayerKills(attackerId, getPlayerKills(attackerId) + 1);
-    setPlayerDeaths(killedId, getPlayerDeaths(killedId) + 1);
-    setPlayerExp(attackerId, getPlayerExp(attackerId) + 50);
+onPlayerKilled = function(victimId, killerId) {
+    if (!killerId) return;
+    setPlayerKills(killerId, getPlayerKills(killerId) + 1);
+    setPlayerDeaths(victimId, getPlayerDeaths(victimId) + 1);
+    setPlayerExp(killerId, getPlayerExp(killerId) + 50);
 
-    // 20% chance to earn 1 LBux on kill
     if (Math.random() < 0.2) {
-        setPlayerLBux(attackerId, getPlayerLBux(attackerId) + 1);
-        api.sendMessage(attackerId, "&6+1 LBux rewarded!");
+        setPlayerLBux(killerId, getPlayerLBux(killerId) + 1);
+        api.sendMessage(killerId, "&6+1 LBux rewarded!");
     }
 
-    api.sendMessage(attackerId, "&a+50 EXP for kill!");
-    updateLobbyHUD(attackerId);
-    updateLobbyHUD(killedId);
+    api.sendMessage(killerId, "&a+50 EXP for kill!");
+    updateLobbyHUD(killerId);
+    updateLobbyHUD(victimId);
 };
 
 onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
     const dbId = api.getPlayerDbId(playerId);
     const pos = api.getPosition(playerId);
     const chunkId = getChunkId(pos);
+    const tokens = getPlayerTokens(playerId);
 
-    if (itemKey === "buy_rank") {
-        const nextIdx = getPlayerRank(playerId) + 1;
-        setPlayerTokens(playerId, getPlayerTokens(playerId) - RANKS[nextIdx].cost);
-        setPlayerRank(playerId, nextIdx);
-        updatePlayerNameTag(playerId);
-        api.broadcastMessage("&a" + api.getEntityName(playerId) + " is now a " + RANKS[nextIdx].name + "!");
+    if (itemKey.startsWith("rank_")) {
+        const idx = parseInt(itemKey.split("_")[1]);
+        const rank = RANKS[idx];
+        const ownedRankIdx = getPlayerRank(playerId);
+
+        if (idx <= ownedRankIdx) {
+            api.setPlayerDbValue(playerId, "activeRankIdx", idx);
+            updatePlayerNameTag(playerId);
+            api.sendMessage(playerId, `&aSelected ${rank.name} rank.`);
+        } else if (idx === ownedRankIdx + 1 && tokens >= rank.cost) {
+            setPlayerTokens(playerId, tokens - rank.cost);
+            setPlayerRank(playerId, idx);
+            api.setPlayerDbValue(playerId, "activeRankIdx", idx);
+            updatePlayerNameTag(playerId);
+            api.broadcastMessage(`&a${api.getEntityName(playerId)} is now a ${rank.name}!`);
+        }
     }
 
     if (itemKey === "claim") {
-        setPlayerTokens(playerId, getPlayerTokens(playerId) - CLAIM_COST);
-        setChunkData(chunkId, {
-            ownerDbId: dbId, ownerName: api.getEntityName(playerId),
-            trusted: [], tpPoint: pos, tpOpen: false, forSale: false, price: 0
-        });
-        addOwnedChunk(dbId, chunkId);
-        api.sendMessage(playerId, "&aChunk claimed!");
+        if (api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1) {
+            api.removeItemName(playerId, CURRENCY_ITEM, 1);
+            const defaultPlotName = api.getPlayerDbValue(playerId, "defaultPlotName") || `${api.getEntityName(playerId)}'s Plot`;
+            setChunkData(chunkId, {
+                ownerDbId: dbId, ownerName: api.getEntityName(playerId), name: defaultPlotName,
+                trusted: [], tpPoint: pos, tpOpen: false, forSale: false, price: 0
+            });
+            addOwnedChunk(dbId, chunkId);
+            api.sendMessage(playerId, "&aPlot claimed!");
+        }
+    }
+
+    if (itemKey === "rename_plot") {
+        const c = getChunkData(chunkId);
+        if (c && c.ownerDbId === dbId) {
+            c.name = userInput;
+            setChunkData(chunkId, c);
+            api.setPlayerDbValue(playerId, "defaultPlotName", userInput);
+            api.sendMessage(playerId, `&aPlot renamed to: ${userInput}`);
+        }
+    }
+
+    if (itemKey === "withdraw_coin") {
+        if (tokens >= 500) {
+            setPlayerTokens(playerId, tokens - 500);
+            api.giveItem(playerId, CURRENCY_ITEM, 1);
+            api.sendMessage(playerId, `&aWithdrew 1 ${CURRENCY_ITEM}.`);
+        }
+    }
+    if (itemKey === "deposit_coin") {
+        if (api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1) {
+            api.removeItemName(playerId, CURRENCY_ITEM, 1);
+            setPlayerTokens(playerId, tokens + 450);
+            api.sendMessage(playerId, `&aDeposited 1 ${CURRENCY_ITEM}. Received 450 token:`);
+        }
+    }
+
+    if (itemKey.startsWith("buy_item_")) {
+        const itemName = itemKey.replace("buy_item_", "");
+        const buyObj = BUY_ITEMS.find(i => i.item === itemName);
+        if (tokens >= buyObj.cost) {
+            setPlayerTokens(playerId, tokens - buyObj.cost);
+            api.giveItem(playerId, itemName, 1);
+        }
+    }
+    if (itemKey.startsWith("sell_item_")) {
+        const itemName = itemKey.replace("sell_item_", "");
+        const sellObj = SELL_ITEMS.find(i => i.item === itemName);
+        if (api.getInventoryItemAmount(playerId, itemName) >= 1) {
+            api.removeItemName(playerId, itemName, 1);
+            setPlayerTokens(playerId, tokens + sellObj.reward);
+        }
+    }
+
+    if (itemKey.startsWith("lucky_")) {
+        const lbName = itemKey.replace("lucky_", "");
+        if (api.getInventoryItemAmount(playerId, KEY_ITEM_NAME) >= 1) {
+            api.removeItemName(playerId, KEY_ITEM_NAME, 1);
+            api.giveItem(playerId, lbName, 1);
+        }
+    }
+
+    if (itemKey === "kit_peasant") {
+        const lastKit = Number(api.getPlayerDbValue(playerId, "lastPeasantKit")) || 0;
+        const now = api.now();
+        if (now - lastKit >= 24 * 3600000) {
+            api.giveItem(playerId, "Wooden Sword", 1);
+            api.giveItem(playerId, "Glider", 1);
+            api.giveItem(playerId, "Wooden Pickaxe", 1);
+            api.giveItem(playerId, "Wooden Axe", 1);
+            api.giveItem(playerId, "Wooden Shovel", 1);
+            api.setPlayerDbValue(playerId, "lastPeasantKit", now);
+            api.sendMessage(playerId, "&aPeasant kit claimed!");
+        }
     }
 
     if (itemKey === "sell") {
@@ -339,9 +420,8 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
             chunk.forSale = true; chunk.price = price;
             setChunkData(chunkId, chunk);
             const market = getMarketplace();
-            // Update or Add to market
             const existingIdx = market.findIndex(m => m.chunkId === chunkId);
-            const entry = { chunkId, price, ownerName: chunk.ownerName, customTitle: "Plot @ " + chunkId, ownerDbId: dbId, tpOpen: chunk.tpOpen };
+            const entry = { chunkId, price, ownerName: chunk.ownerName, customTitle: chunk.name || "Plot @ " + chunkId, ownerDbId: dbId, tpOpen: chunk.tpOpen };
             if (existingIdx >= 0) market[existingIdx] = entry;
             else market.push(entry);
             setMarketplace(market);
@@ -367,19 +447,13 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const listingIdx = market.findIndex(m => m.chunkId === targetChunkId);
         const listing = market[listingIdx];
         const targetChunk = getChunkData(targetChunkId);
-        const tokens = getPlayerTokens(playerId);
 
         if (targetChunk && targetChunk.ownerDbId !== dbId && tokens >= listing.price) {
              const oldOwnerDbId = targetChunk.ownerDbId;
-
-             // Update database ownership tracking
              removeOwnedChunk(oldOwnerDbId, targetChunkId);
              addOwnedChunk(dbId, targetChunkId);
-
-             // Transfer Tokens
              setPlayerTokens(playerId, tokens - listing.price);
 
-             // Find online seller to reward
              const allIds = api.getPlayerIds();
              for (const sid of allIds) {
                  if (api.getPlayerDbId(sid) === oldOwnerDbId) {
@@ -397,15 +471,6 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         }
     }
 
-    if (itemKey.startsWith("my_tp_")) {
-        const targetChunkId = itemKey.replace("my_tp_", "");
-        const targetChunk = getChunkData(targetChunkId);
-        if (targetChunk && targetChunk.ownerDbId === dbId) {
-            api.setPosition(playerId, targetChunk.tpPoint.x, targetChunk.tpPoint.y, targetChunk.tpPoint.z);
-            api.sendMessage(playerId, "&aTeleported to island.");
-        }
-    }
-
     if (itemKey === "tp_home") {
         const chunk = getChunkData(chunkId);
         if (chunk && chunk.ownerDbId === dbId) {
@@ -419,22 +484,7 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const targetChunk = getChunkData(targetChunkId);
         if (targetChunk && (targetChunk.tpOpen || targetChunk.ownerDbId === dbId)) {
              api.setPosition(playerId, targetChunk.tpPoint.x, targetChunk.tpPoint.y, targetChunk.tpPoint.z);
-             api.sendMessage(playerId, "&aTeleported to island.");
-        }
-    }
-
-    if (itemKey === "claim_kit") {
-        const rank = RANKS[getPlayerRank(playerId)];
-        const lastKit = Number(api.getPlayerDbValue(playerId, "lastKit")) || 0;
-        const now = api.now();
-        if (now - lastKit >= 24 * 60 * 60 * 1000) { // 24h cooldown
-            rank.kit.items.forEach((it, i) => {
-                api.giveItem(playerId, it, rank.kit.amounts[i]);
-            });
-            api.setPlayerDbValue(playerId, "lastKit", now);
-            api.sendMessage(playerId, "&aKit claimed!");
-        } else {
-            api.sendMessage(playerId, "&cKit available in " + Math.ceil((24*60*60*1000 - (now-lastKit))/3600000) + " hours.");
+             api.sendMessage(playerId, "&aTeleported to plot.");
         }
     }
 
@@ -442,7 +492,7 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const chunk = getChunkData(chunkId);
         if (chunk && chunk.ownerDbId === dbId) {
             chunk.tpPoint = pos; setChunkData(chunkId, chunk);
-            api.sendMessage(playerId, "&aTP set!");
+            api.sendMessage(playerId, "&aPlot spawn set!");
         }
     }
 
@@ -450,39 +500,12 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const chunk = getChunkData(chunkId);
         if (chunk && chunk.ownerDbId === dbId) {
             chunk.tpOpen = !chunk.tpOpen; setChunkData(chunkId, chunk);
-            api.sendMessage(playerId, "&aTP: " + (chunk.tpOpen ? "Open" : "Closed"));
-            // Sync with marketplace if listed
+            api.sendMessage(playerId, "&aPlot: " + (chunk.tpOpen ? "Open" : "Closed"));
             const market = getMarketplace();
             const mIdx = market.findIndex(m => m.chunkId === chunkId);
             if (mIdx >= 0) {
                 market[mIdx].tpOpen = chunk.tpOpen;
                 setMarketplace(market);
-            }
-        }
-    }
-
-    // Handle Config Exchanges
-    if (itemKey.startsWith("config_")) {
-        const configId = itemKey.replace("config_", "");
-        let configEntry = null;
-        for (const cat in SHOP_CONFIG) {
-            if (SHOP_CONFIG[cat][configId]) {
-                configEntry = SHOP_CONFIG[cat][configId];
-                break;
-            }
-        }
-
-        if (configEntry) {
-            // Check Reqs again
-            let canAfford = true;
-            configEntry.takes.forEach(t => {
-                if (api.getInventoryItemAmount(playerId, t.item) < t.amount) canAfford = false;
-            });
-
-            if (canAfford) {
-                configEntry.takes.forEach(t => api.removeItemName(playerId, t.item, t.amount));
-                configEntry.gives.forEach(g => api.giveItem(playerId, g.item, g.amount));
-                api.sendMessage(playerId, "&aPurchase successful!");
             }
         }
     }
@@ -501,9 +524,10 @@ const LAST_PLAYER_CHUNKS = {};
 function updateLobbyHUD(playerId) {
     const allPlayers = api.getPlayerIds();
     const pos = api.getPosition(playerId);
+    if (!pos) return;
     const chunkId = getChunkId(pos);
     const chunk = getChunkData(chunkId);
-    const rank = RANKS[getPlayerRank(playerId)];
+    const rank = RANKS[Number(api.getPlayerDbValue(playerId, "activeRankIdx")) || 0];
     const tokens = getPlayerTokens(playerId);
     const exp = getPlayerExp(playerId);
     const lbux = getPlayerLBux(playerId);
@@ -525,7 +549,7 @@ function updateLobbyHUD(playerId) {
             style: { color: "#aa0000", fontWeight: "bold" }
         },
         {
-            str: `${chunk ? chunk.ownerName : "LoverFella"}\n`,
+            str: `${chunk ? (chunk.name || chunk.ownerName) : "LoverFella"}\n`,
             style: { color: "#aa0000" }
         },
         {
@@ -586,12 +610,16 @@ tick = function() {
 
         // Persistent Sidebar HUD & Buffs & Dynamic Shop Updates
         if (!LAST_HUD_UPDATES[p] || now - LAST_HUD_UPDATES[p] >= HUD_UPDATE_INTERVAL) {
+            const pos = api.getPosition(p);
+            if (!pos) return;
+
             updateLobbyHUD(p);
-            const rank = RANKS[getPlayerRank(p)];
+            const activeRankIdx = Number(api.getPlayerDbValue(p, "activeRankIdx")) || 0;
+            const rank = RANKS[activeRankIdx];
             rank.effects.forEach(eff => api.applyEffect(p, eff, 2000, { level: 1 }));
 
             // Update shop if chunk changed
-            const currentChunkId = getChunkId(api.getPosition(p));
+            const currentChunkId = getChunkId(pos);
             if (LAST_PLAYER_CHUNKS[p] !== currentChunkId) {
                 updateShop(p);
                 LAST_PLAYER_CHUNKS[p] = currentChunkId;
@@ -599,9 +627,5 @@ tick = function() {
 
             LAST_HUD_UPDATES[p] = now;
         }
-
-        // Instant Sell Guidance (LoverFella SMP style)
-        // Note: Actual selling is handled by Bloxd's built-in SMP system settings,
-        // but we can provide a shortcut to the shop or info here if needed.
     });
 };
