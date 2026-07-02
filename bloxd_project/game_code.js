@@ -12,6 +12,8 @@ const KEY_ITEM_NAME = "Dark Green Bricks";
 const CURRENCY_ITEM = "Gold Coin";
 const CHUNK_SIZE = 64;
 
+const ADMINS = ["Ze_Pezident", "Pezident", "DrDonutt99", "hi", "67"];
+
 // Detailed Shop Config
 const BUY_ITEMS = [
     { item: "Stone", cost: 5, icon: "Stone" },
@@ -118,22 +120,32 @@ function getPlayerIdByName(name) {
 function updatePlayerNameTag(playerId) {
     const activeRankIdx = Number(api.getPlayerDbValue(playerId, "activeRankIdx")) || 0;
     const rank = RANKS[activeRankIdx];
+    const name = api.getEntityName(playerId);
+
+    let tags = [];
+
+    // Add Rank Icon
+    tags.push({
+        icon: rank.icon === "user" ? "wrench" : (rank.icon === "crown" ? "crown" : rank.icon),
+        mainRGB: rank.color,
+        chatTag: []
+    });
+
+    // Add Admin prefix
+    if (ADMINS.includes(name)) {
+        tags.push({ str: "🛡️ Admin ", style: { color: "aqua" } });
+    }
+
+    // Add Rank Name and Player Name
+    tags.push({
+        str: ` [${rank.name}] ${name}`,
+        style: { color: rank.color }
+    });
+
     api.setTargetedPlayerSettingForEveryone(
         playerId,
         "nameTagInfo",
-        {
-            content: [
-                {
-                    icon: rank.icon === "user" ? "wrench" : (rank.icon === "crown" ? "crown" : rank.icon),
-                    mainRGB: rank.color,
-                    chatTag: [],
-                },
-                {
-                    str: ` [${rank.name}] ${api.getEntityName(playerId)}`,
-                    style: { color: rank.color }
-                },
-            ],
-        },
+        { content: tags },
         true
     );
 }
@@ -294,6 +306,70 @@ onPlayerJoin = function(playerId, fromGameReset) {
     updateLobbyHUD(playerId);
     updatePlayerNameTag(playerId);
     api.setClientOption(playerId, "showChatBubbles", true);
+
+    // Playtime tracking
+    if (!PLAYER_TIMERS[playerId]) PLAYER_TIMERS[playerId] = api.now();
+};
+
+onPlayerChat = function(playerId, msg) {
+    msg = msg.trim();
+    const stats = {
+        tokens: getPlayerTokens(playerId),
+        kills: getPlayerKills(playerId),
+        deaths: getPlayerDeaths(playerId),
+        exp: getPlayerExp(playerId),
+        lbux: getPlayerLBux(playerId)
+    };
+
+    if (msg === "!help") {
+        api.sendMessage(playerId, "Commands: !bal !kills !deaths !kdr !lbux !pay <player> <amount>", { color: "#00FFFF" });
+        return false;
+    }
+    if (msg === "!bal") {
+        api.sendMessage(playerId, `Your balance: ${stats.tokens} tokens`, { color: "#00FF00" });
+        return false;
+    }
+    if (msg === "!kills") {
+        api.sendMessage(playerId, `Kills: ${stats.kills}`, { color: "#FFAA00" });
+        return false;
+    }
+    if (msg === "!deaths") {
+        api.sendMessage(playerId, `Deaths: ${stats.deaths}`, { color: "#FF5555" });
+        return false;
+    }
+    if (msg === "!lbux") {
+        api.sendMessage(playerId, `LBux: ${stats.lbux}`, { color: "#ff5555" });
+        return false;
+    }
+    if (msg === "!kdr") {
+        let kdr = stats.deaths === 0 ? stats.kills.toFixed(2) : (stats.kills / stats.deaths).toFixed(2);
+        api.sendMessage(playerId, `KDR: ${kdr}`, { color: "#AAAAFF" });
+        return false;
+    }
+
+    if (msg.startsWith("!pay ")) {
+        const parts = msg.split(" ");
+        const targetName = parts[1];
+        const amount = parseInt(parts[2]);
+        const targetId = getPlayerIdByName(targetName);
+
+        if (!targetId || targetId === playerId || isNaN(amount) || amount <= 0) {
+            api.sendMessage(playerId, "Usage: !pay <player> <amount>", { color: "red" });
+            return false;
+        }
+        if (stats.tokens < amount) {
+            api.sendMessage(playerId, "Not enough tokens.", { color: "red" });
+            return false;
+        }
+
+        setPlayerTokens(playerId, stats.tokens - amount);
+        setPlayerTokens(targetId, getPlayerTokens(targetId) + amount);
+        api.sendMessage(playerId, `Paid ${amount} token: to ${targetName}`, { color: "#00FF00" });
+        api.sendMessage(targetId, `Received ${amount} token: from ${api.getEntityName(playerId)}`, { color: "#00FFAA" });
+        return false;
+    }
+
+    return true; // Allow normal chat
 };
 
 onPlayerKilled = function(victimId, killerId) {
