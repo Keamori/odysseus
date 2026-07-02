@@ -12,7 +12,7 @@ const KEY_ITEM_NAME = "Dark Green Bricks";
 const CURRENCY_ITEM = "Gold Coin";
 const CHUNK_SIZE = 64;
 
-const ADMINS = ["Ze_Pezident", "Pezident", "DrDonutt99", "hi", "67"];
+const ADMINS = ["Hafuja"];
 
 // Detailed Shop Config
 const BUY_ITEMS = [
@@ -187,22 +187,22 @@ function updateShop(playerId) {
     // My Plot (Management)
     if (chunk && chunk.ownerDbId === dbId) {
         api.createShopItemForPlayer(playerId, "My Plot", "rename_plot", {
-            image: "Sign", title: "Rename Plot", cost: 0,
+            image: "Board", title: "Rename Plot", cost: 0,
             description: `Current Name: ${chunk.name || chunk.ownerName + "'s Island"}`,
             userInput: { type: "text", placeholderText: "New Plot Name" }
         });
         api.createShopItemForPlayer(playerId, "My Plot", "tp_home", {
-            image: "Bed", title: "Teleport Home", cost: 0, description: "Go to your plot spawn."
+            image: "Red Bed", title: "Teleport Home", cost: 0, description: "Go to your plot spawn."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "set_tp", {
             image: "Compass", title: "Set Plot Spawn", cost: 0, description: "Set where people arrive."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "toggle_tp", {
-            image: "Iron Door", title: chunk.tpOpen ? "Close Plot (Private)" : "Open Plot (Public)",
+            image: "Green Portal", title: chunk.tpOpen ? "Close Plot (Private)" : "Open Plot (Public)",
             cost: 0, description: "Toggle visitor access."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "add_trust", {
-            image: "Player Head", title: "Trust Builder", cost: 0,
+            image: "WorldBuilder Wand", title: "Trust Builder", cost: 0,
             description: "Allow a player to build here.",
             userInput: { type: "text", placeholderText: "Player Name" }
         });
@@ -246,12 +246,12 @@ function updateShop(playerId) {
 
     // Bank (Coin <-> Token)
     api.createShopItemForPlayer(playerId, "Bank", "withdraw_coin", {
-        image: "Gold Ingot", title: `Withdraw ${CURRENCY_ITEM}`, cost: 500,
+        image: "Gold Coin", customTitle: `Withdraw ${CURRENCY_ITEM}`, cost: 500,
         description: `Exchange 500 tokens for 1 ${CURRENCY_ITEM}.`,
         canBuy: tokens >= 500
     });
     api.createShopItemForPlayer(playerId, "Bank", "deposit_coin", {
-        image: "Gold Ingot", title: `Deposit ${CURRENCY_ITEM}`, cost: 0,
+        image: "Common Lottery Ticket", customTitle: `Deposit ${CURRENCY_ITEM}`, cost: 0,
         description: `Exchange 1 ${CURRENCY_ITEM} for 450 tokens.`,
         canBuy: api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1
     });
@@ -285,8 +285,8 @@ function updateShop(playerId) {
 
     // Kits
     api.createShopItemForPlayer(playerId, "Kits", "kit_peasant", {
-        image: "Wooden Sword", title: "Peasant Kit", cost: 0,
-        description: "Standard tools: Sword, Glider, Pickaxe, Axe, Shovel."
+        image: "Wood Sword", customTitle: "Peasant Kit", cost: 0,
+        description: "Standard tools: Sword, Glider, Pickaxe, Axe, Spade."
     });
 }
 
@@ -482,11 +482,11 @@ onPlayerBoughtShopItem = function(playerId, categoryKey, itemKey, userInput) {
         const lastKit = Number(api.getPlayerDbValue(playerId, "lastPeasantKit")) || 0;
         const now = api.now();
         if (now - lastKit >= 24 * 3600000) {
-            api.giveItem(playerId, "Wooden Sword", 1);
-            api.giveItem(playerId, "Glider", 1);
-            api.giveItem(playerId, "Wooden Pickaxe", 1);
-            api.giveItem(playerId, "Wooden Axe", 1);
-            api.giveItem(playerId, "Wooden Shovel", 1);
+            api.giveItem(playerId, "Wood Sword", 1);
+            api.giveItem(playerId, "Wood Hang Glider", 1);
+            api.giveItem(playerId, "Wood Pickaxe", 1);
+            api.giveItem(playerId, "Wood Axe", 1);
+            api.giveItem(playerId, "Wood Spade", 1);
             api.setPlayerDbValue(playerId, "lastPeasantKit", now);
             api.sendMessage(playerId, "&aPeasant kit claimed!");
         }
