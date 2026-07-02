@@ -616,7 +616,7 @@ function updateLobbyHUD(playerId) {
 
     api.setClientOption(playerId, "RightInfoText", [
         {
-            str: " ❤️ Mega Survival ❤️ \n",
+            str: " ❤️ Hafuja's Domain ❤️ \n",
             style: { color: "#ffff00", fontWeight: "bold", fontSize: "14px" }
         },
         {
@@ -628,7 +628,7 @@ function updateLobbyHUD(playerId) {
             style: { color: "#aa0000", fontWeight: "bold" }
         },
         {
-            str: `${chunk ? (chunk.name || chunk.ownerName) : "LoverFella"}\n`,
+            str: `${chunk ? (chunk.name || chunk.ownerName) : "Unclaimed"}\n`,
             style: { color: "#aa0000" }
         },
         {
@@ -640,7 +640,7 @@ function updateLobbyHUD(playerId) {
             style: { color: "#ffffaa", fontSize: "12px" }
         },
         {
-            str: ` 🚀 LBux: ${lbux}\n`,
+            str: ` 🚀 Tokens: ${lbux}\n`,
             style: { color: "#ff5555", fontSize: "12px" }
         },
         {
@@ -664,11 +664,11 @@ function updateLobbyHUD(playerId) {
             style: { color: "#ffffaa", fontSize: "12px" }
         },
         {
-            str: ` Chunk: ${Math.floor(pos.x/64)}, ${Math.floor(pos.z/64)}\n\n`,
+            str: ` Chunk: ${api.blockCoordToChunkId ? api.blockCoordToChunkId(pos.x, pos.y, pos.z) : Math.floor(pos.x/64) + ',' + Math.floor(pos.z/64)}\n\n`,
             style: { color: "#ffffaa", fontSize: "12px" }
         },
         {
-            str: " play.loverfella.com ",
+            str: " Gamemode Creator: Hafuja ",
             style: { color: "#aaaaaa", fontSize: "10px" }
         }
     ]);
