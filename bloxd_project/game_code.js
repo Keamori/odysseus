@@ -18,38 +18,41 @@ const ADMINS = ["Ze_Pezident", "Pezident", "DrDonutt99", "hi", "67"];
 const BUY_ITEMS = [
     { item: "Stone", cost: 5, icon: "Stone" },
     { item: "Dirt", cost: 2, icon: "Dirt" },
-    { item: "Grass Block", cost: 5, icon: "Grass Block" },
-    { item: "Oak Log", cost: 10, icon: "Oak Log" },
-    { item: "Iron Ingot", cost: 50, icon: "Iron Ingot" },
-    { item: "Gold Ingot", cost: 150, icon: "Gold Ingot" },
+    { item: "Maple Log", cost: 15, icon: "Maple Log" },
+    { item: "Iron Bar", cost: 50, icon: "Iron Bar" },
+    { item: "Gold Bar", cost: 150, icon: "Gold Bar" },
     { item: "Diamond", cost: 500, icon: "Diamond" }
 ];
 
 const SELL_ITEMS = [
     { item: "Wheat", reward: 2, icon: "Wheat" },
     { item: "Bread", reward: 5, icon: "Bread" },
-    { item: "Iron Ingot", reward: 25, icon: "Iron Ingot" },
+    { item: "Maple Log", reward: 7, icon: "Maple Log" },
+    { item: "Iron Bar", reward: 25, icon: "Iron Bar" },
+    { item: "Gold Bar", reward: 75, icon: "Gold Bar" },
     { item: "Diamond", reward: 250, icon: "Diamond" }
 ];
 
 const LUCKY_BLOCK_TYPES = [
     { item: "Lucky Block", icon: "Lucky Block" },
-    { item: "Super Lucky Block", icon: "Lucky Block" },
-    { item: "Omega Lucky Block", icon: "Lucky Block" }
+    { item: "Ultra Lucky Block", icon: "Lucky Block" },
+    { item: "Weapon Lucky Block", icon: "Lucky Block" },
+    { item: "Pet Lucky Block", icon: "Lucky Block" },
+    { item: "Gun Lucky Block", icon: "Lucky Block" }
 ];
 
 // Rank Progression
 const RANKS = [
-    { name: "Peasant", cost: 0, focus: "Start", effects: [], icon: "user", color: "gray" },
-    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], icon: "leaf", color: "green" },
-    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], icon: "pickaxe", color: "lightblue" },
-    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], icon: "swords", color: "red" },
-    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], icon: "tree", color: "brown" },
-    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], icon: "shovel", color: "orange" },
-    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], icon: "shield", color: "blue" },
-    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], icon: "hammer", color: "gold" },
-    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], icon: "zap", color: "yellow" },
-    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], icon: "crown", color: "darkorange" }
+    { name: "Peasant", cost: 0, focus: "Start", effects: [], image: "Leather", icon: "user", color: "gray" },
+    { name: "Farmer", cost: 2000, focus: "Farming", effects: ["Speed"], image: "Iron Hoe", icon: "leaf", color: "green" },
+    { name: "Miner", cost: 5000, focus: "Mining", effects: ["Haste"], image: "Iron Pickaxe", icon: "pickaxe", color: "lightblue" },
+    { name: "Warrior", cost: 15000, focus: "PVP", effects: ["Damage"], image: "Iron Sword", icon: "swords", color: "red" },
+    { name: "Lumberjack", cost: 30000, focus: "Chopping", effects: ["Haste"], image: "Moonstone Axe", icon: "tree", color: "brown" },
+    { name: "Excavator", cost: 60000, focus: "Digging", effects: ["Speed"], image: "Diamond Spade", icon: "shovel", color: "orange" },
+    { name: "Knight", cost: 150000, focus: "PVP", effects: ["Damage", "Speed"], image: "Knight Sword", icon: "shield", color: "blue" },
+    { name: "Architect", cost: 300000, focus: "Building", effects: ["Jump Boost"], image: "WorldBuilder Wand", icon: "hammer", color: "gold" },
+    { name: "Scout", cost: 600000, focus: "Speed", effects: ["Speed", "Jump Boost"], image: "Haste Potion II", icon: "zap", color: "yellow" },
+    { name: "Berserker", cost: 1500000, focus: "PVP", effects: ["Damage", "Speed", "Haste"], image: "Chaos Potion", icon: "crown", color: "darkorange" }
 ];
 
 // --- 2. Database Helpers ---
@@ -173,8 +176,8 @@ function updateShop(playerId) {
         }
 
         api.createShopItemForPlayer(playerId, "Ranks", "rank_" + idx, {
-            image: rank.icon === "user" ? "Player Head" : (rank.icon === "crown" ? "Gold Block" : "Sign"),
-            customTitle: `${rank.name} [${status}]`,
+            image: rank.image,
+            title: `${rank.name} [${status}]`,
             cost: (status === "Buy") ? rank.cost : 0,
             description: `Tier ${idx + 1} | ${rank.focus} focus. Status: ${status}`,
             canBuy: canBuy
@@ -184,35 +187,35 @@ function updateShop(playerId) {
     // My Plot (Management)
     if (chunk && chunk.ownerDbId === dbId) {
         api.createShopItemForPlayer(playerId, "My Plot", "rename_plot", {
-            image: "Sign", customTitle: "Rename Plot", cost: 0,
+            image: "Sign", title: "Rename Plot", cost: 0,
             description: `Current Name: ${chunk.name || chunk.ownerName + "'s Island"}`,
             userInput: { type: "text", placeholderText: "New Plot Name" }
         });
         api.createShopItemForPlayer(playerId, "My Plot", "tp_home", {
-            image: "Bed", customTitle: "Teleport Home", cost: 0, description: "Go to your plot spawn."
+            image: "Bed", title: "Teleport Home", cost: 0, description: "Go to your plot spawn."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "set_tp", {
-            image: "Compass", customTitle: "Set Plot Spawn", cost: 0, description: "Set where people arrive."
+            image: "Compass", title: "Set Plot Spawn", cost: 0, description: "Set where people arrive."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "toggle_tp", {
-            image: "Iron Door", customTitle: chunk.tpOpen ? "Close Plot (Private)" : "Open Plot (Public)",
+            image: "Iron Door", title: chunk.tpOpen ? "Close Plot (Private)" : "Open Plot (Public)",
             cost: 0, description: "Toggle visitor access."
         });
         api.createShopItemForPlayer(playerId, "My Plot", "add_trust", {
-            image: "Player Head", customTitle: "Trust Builder", cost: 0,
+            image: "Player Head", title: "Trust Builder", cost: 0,
             description: "Allow a player to build here.",
             userInput: { type: "text", placeholderText: "Player Name" }
         });
         api.createShopItemForPlayer(playerId, "My Plot", "sell", {
-            image: "Chest", customTitle: "List for Sale", cost: 0,
+            image: "Chest", title: "List for Sale", cost: 0,
             description: "Put this plot on the marketplace.",
             userInput: { type: "number", placeholderText: "Price in Tokens" }
         });
     } else if (!chunk) {
         // Claim using Gold Coin item
         api.createShopItemForPlayer(playerId, "My Plot", "claim", {
-            image: "Grass Block",
-            customTitle: "Claim This Plot",
+            image: "Chunk Map",
+            title: "Claim This Plot",
             cost: 0,
             description: `Costs 1 ${CURRENCY_ITEM}. Protects 64x64 area.`,
             canBuy: api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1
@@ -223,8 +226,8 @@ function updateShop(playerId) {
     const market = getMarketplace();
     market.forEach((item) => {
         api.createShopItemForPlayer(playerId, "Real Estate", "market_" + item.chunkId, {
-            image: "Grass Block",
-            customTitle: `${item.customTitle || item.name || "Plot"} (${item.price} token:)`,
+            image: "Chunk Map",
+            title: `${(item.customTitle && item.customTitle !== "Plot") ? item.customTitle : "Plot"} (${item.price} token:)`,
             cost: item.price,
             description: `Seller: ${item.ownerName}. Purchase to own this land.`,
             canBuy: tokens >= item.price && item.ownerDbId !== dbId
@@ -235,7 +238,7 @@ function updateShop(playerId) {
     market.forEach((item) => {
         if (item.tpOpen) {
              api.createShopItemForPlayer(playerId, "Visit Plots", "tp_" + item.chunkId, {
-                image: "Compass", customTitle: `Visit: ${item.ownerName}`, cost: 0,
+                image: "Compass", title: `Visit: ${item.ownerName}`, cost: 0,
                 description: "Teleport to this public plot."
              });
         }
@@ -243,12 +246,12 @@ function updateShop(playerId) {
 
     // Bank (Coin <-> Token)
     api.createShopItemForPlayer(playerId, "Bank", "withdraw_coin", {
-        image: "Gold Ingot", customTitle: `Withdraw ${CURRENCY_ITEM}`, cost: 500,
+        image: "Gold Ingot", title: `Withdraw ${CURRENCY_ITEM}`, cost: 500,
         description: `Exchange 500 tokens for 1 ${CURRENCY_ITEM}.`,
         canBuy: tokens >= 500
     });
     api.createShopItemForPlayer(playerId, "Bank", "deposit_coin", {
-        image: "Gold Ingot", customTitle: `Deposit ${CURRENCY_ITEM}`, cost: 0,
+        image: "Gold Ingot", title: `Deposit ${CURRENCY_ITEM}`, cost: 0,
         description: `Exchange 1 ${CURRENCY_ITEM} for 450 tokens.`,
         canBuy: api.getInventoryItemAmount(playerId, CURRENCY_ITEM) >= 1
     });
@@ -256,7 +259,7 @@ function updateShop(playerId) {
     // Buy (Factions Style)
     BUY_ITEMS.forEach(obj => {
         api.createShopItemForPlayer(playerId, "Buy", "buy_item_" + obj.item, {
-            image: obj.icon, customTitle: obj.item, cost: obj.cost, description: `Buy 1 ${obj.item}`,
+            image: obj.icon, title: obj.item, cost: obj.cost, description: `Buy 1 ${obj.item}`,
             canBuy: tokens >= obj.cost
         });
     });
@@ -264,7 +267,7 @@ function updateShop(playerId) {
     // Sell (Factions Style)
     SELL_ITEMS.forEach(obj => {
         api.createShopItemForPlayer(playerId, "Sell", "sell_item_" + obj.item, {
-            image: obj.icon, customTitle: `Sell ${obj.item}`, cost: -obj.reward,
+            image: obj.icon, title: `Sell ${obj.item}`, cost: -obj.reward,
             description: `Earn ${obj.reward} tokens per 1 ${obj.item}`,
             canBuy: api.getInventoryItemAmount(playerId, obj.item) >= 1,
             sell: true
@@ -274,7 +277,7 @@ function updateShop(playerId) {
     // Lucky Blocks
     LUCKY_BLOCK_TYPES.forEach(lb => {
         api.createShopItemForPlayer(playerId, "Lucky Blocks", "lucky_" + lb.item, {
-            image: lb.icon, customTitle: `Buy ${lb.item}`, cost: 0,
+            image: lb.icon, title: `Buy ${lb.item}`, cost: 0,
             description: `Costs 1 ${KEY_ITEM_NAME}`,
             canBuy: api.getInventoryItemAmount(playerId, KEY_ITEM_NAME) >= 1
         });
@@ -282,7 +285,7 @@ function updateShop(playerId) {
 
     // Kits
     api.createShopItemForPlayer(playerId, "Kits", "kit_peasant", {
-        image: "Wooden Sword", customTitle: "Peasant Kit", cost: 0,
+        image: "Wooden Sword", title: "Peasant Kit", cost: 0,
         description: "Standard tools: Sword, Glider, Pickaxe, Axe, Shovel."
     });
 }
